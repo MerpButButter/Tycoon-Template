@@ -1,7 +1,7 @@
 local CollectionService = game:GetService("CollectionService")
-local Template = game:GetService("ServerStorage").Template
+local Template = game:GetService("ServerStorage"):WaitForChild("Template")
 local componentFolder = game:GetService("ServerScriptService").Server:WaitForChild("Components")
-local tycoonStorage = game:GetService("ServerStorage").TycoonStorage
+local tycoonStorage = game:GetService("ServerStorage"):WaitForChild("TycoonStorage")
 local playerManager = require(game:GetService("ServerScriptService").Server:WaitForChild("PlayerManager"))
 
 local function NewModel(model, cframe)
@@ -30,7 +30,14 @@ function Tycoon:Init()
 	self.Owner:LoadCharacter()
 
 	self:LockAll()
+	self:LoadUnlocks()
 	self:WaitForExit()
+end
+
+function Tycoon:LoadUnlocks()
+	for _, id in ipairs(playerManager.GetUnlockIds(self.Owner)) do
+		self:PublishTopic("Button", id)
+	end
 end
 
 function Tycoon:LockAll()
@@ -48,7 +55,8 @@ function Tycoon:Lock(instance)
 	self:CreateComponent(instance, componentFolder.Unlockable)
 end
 
-function Tycoon:Unlock(instance)
+function Tycoon:Unlock(instance, id)
+	playerManager.AddUnlockId(self.Owner, id)
 	CollectionService:RemoveTag(instance, "Unlockable")
 	instance.Parent = self.Model
 	self:AddComponents(instance)
@@ -63,7 +71,7 @@ function Tycoon:AddComponents(instance)
 	end
 end
 
-function Tycoon:CreateComponent(instance, componentScript)
+function Tycoon:CreateComponent(instance, componentScript: ModuleScript)
 	local compModule = require(componentScript)
 	local newComp = compModule.New(self, instance)
 	newComp:Init()

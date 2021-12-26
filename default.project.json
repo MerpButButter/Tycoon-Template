@@ -12,6 +12,11 @@
         "$path": "Packages"
       }
     },
+    "ServerStorage":{
+      "Dump":{
+        "$path": "src/dump"
+      }
+    },
 
     "ServerScriptService": {
       "Server": {
@@ -20,8 +25,14 @@
     },
 
     "StarterPlayer": {
+
+      "StarterCharacterScripts": {
+        "CharClient": {
+          "$path": "src/content"
+          }
+        },
       "StarterPlayerScripts": {
-        "Client": {
+        "PlrClient": {
           "$path": "src/client"
         }
       }

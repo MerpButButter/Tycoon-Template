@@ -6,12 +6,12 @@ local tweenData = {}
 tweenData.tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Quart)
 tweenData.Goal = { Transparency = 1 }
 
-local function tweenDropFade(drop, time)
-	task.wait(time)
+local function tweenDropFade(drop)
 	if drop and time then
 		local tween = TweenService:Create(drop, tweenData.tweenInfo, tweenData.Goal)
 		tween:Play()
 		Debris:AddItem(drop, 2)
+		print("Destroyed")
 	else
 		return
 	end
@@ -44,8 +44,8 @@ function Dropper:Drop()
 	drop.Parent = self.Instance
 	task.defer(function()
 		task.wait(10)
-		if drop then
-			tweenDropFade(drop, 0.1)
+		if drop.Parent == self.Instance then
+			tweenDropFade(drop)
 		else
 			return
 		end
