@@ -105,3 +105,6 @@ function Tycoon:Destroy()
 end
 
 return Tycoon
+
+
+

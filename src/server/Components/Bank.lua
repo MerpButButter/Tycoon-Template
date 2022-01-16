@@ -22,7 +22,7 @@ end
 
 function Bank:OnWorthChange(worth)
 	self.Balance += worth
-	self:SetDisplay("$" .. self.Balance)
+	self:SetDisplay("$" .. math.round(self.Balance))
 end
 
 function Bank:SetDisplay(str)

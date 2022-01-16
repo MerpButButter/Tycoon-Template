@@ -4,19 +4,21 @@ local meleeData = {
 		WalkAnim = 0,
 		IdleAnim = 0,
 		SwingAnim = 0,
-		Dmg = 15,
-		SwingSfx = 3932507990,
-		HitSfx = 278061737,
-		PlrHitSfx = 3932141920,
+		Dmg = 10,
+		SwingSfx = "rbxassetid://3932507990",
+		HitSfx = "rbxassetid://3932505023",
+		PlrHitSfx = "rbxassetid://3932141920",
+		Cooldown = .5,
 	},
 	Sword = {
-		WalkAnim = 8326471826,
-		IdleAnim = 8326547065,
-		SwingAnim = 8324326162,
+		WalkAnim = "rbxassetid://8326471826",
+		IdleAnim = "rbxassetid://8441980236", --updated to blender
+		SwingAnim = "rbxassetid://8324326162", --fix anim(broken)
 		Dmg = 25,
-		SwingSfx = 4085939047,
-		HitSfx = 6331329239,
-		PlrHitSfx = 3932141920,
+		SwingSfx = "rbxassetid://4085939047",
+		HitSfx = "rbxassetid://6331329239",
+		PlrHitSfx = "rbxassetid://3932141920",
+		Cooldown = 1,
 	},
 }
 
