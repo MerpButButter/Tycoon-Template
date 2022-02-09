@@ -11,7 +11,7 @@ local music = {
 	837030083,
 	7282519907,
 }
-local musicPlayerMdl = require(game:GetService("ReplicatedStorage").Shared:WaitForChild("musicPlayer"))
+local musicPlayerMdl = require(game:GetService("ReplicatedStorage").Source:WaitForChild("musicPlayer"))
 local musicPlayer = musicPlayerMdl.New(music)
 local sound = musicPlayer:LoadMusicData()
 

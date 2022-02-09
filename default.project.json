@@ -2,41 +2,33 @@
   "name": "Tycoon Template",
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
-      "Shared": {
-        "$path": "src/shared"
+      "Source": {
+        "$path": "src/ReplicatedStorage"
       },
-      
-      "Packages":{
+      "Packages": {
         "$path": "Packages"
-      },
-      "Test":{
-        "$path": "Test"
       }
     },
-    "ServerStorage":{
-      "Dump":{
-        "$path": "src/dump"
+    "ServerStorage": {
+      "Source": {
+        "$path": "src/ServerStorage"
       }
     },
-
     "ServerScriptService": {
-      "Server": {
-        "$path": "src/server"
+      "Source": {
+        "$path": "src/ServerScriptService"
       }
     },
-
     "StarterPlayer": {
-
       "StarterCharacterScripts": {
-        "CharClient": {
-          "$path": "src/content"
-          }
-        },
+        "Source": {
+          "$path": "src/StarterCharacterScripts"
+        }
+      },
       "StarterPlayerScripts": {
-        "PlrClient": {
-          "$path": "src/client"
+        "Source": {
+          "$path": "src/StarterPlayerScripts"
         }
       }
     }

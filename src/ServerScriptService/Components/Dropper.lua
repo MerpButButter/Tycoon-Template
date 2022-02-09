@@ -11,7 +11,6 @@ local function tweenDropFade(drop)
 		local tween = TweenService:Create(drop, tweenData.tweenInfo, tweenData.Goal)
 		tween:Play()
 		Debris:AddItem(drop, 2)
-		print("Destroyed")
 	else
 		return
 	end

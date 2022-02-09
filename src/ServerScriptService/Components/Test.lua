@@ -10,7 +10,6 @@ function Test.New(tycoon, instance)
 end
 
 function Test:Init()
-	print("Test was initialized")
 end
 
 return Test

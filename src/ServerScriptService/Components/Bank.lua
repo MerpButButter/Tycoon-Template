@@ -1,4 +1,4 @@
-local PlayerManager = require(game:GetService("ServerScriptService").Server:WaitForChild("PlayerManager"))
+local PlayerManager = require(game:GetService("ServerScriptService").Source:WaitForChild("PlayerManager"))
 local Bank = {}
 Bank.__index = Bank
 

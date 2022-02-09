@@ -1,8 +1,8 @@
 local CollectionService = game:GetService("CollectionService")
 local Template = game:GetService("ServerStorage"):WaitForChild("Template")
-local componentFolder = game:GetService("ServerScriptService").Server:WaitForChild("Components")
+local componentFolder = game:GetService("ServerScriptService").Source:WaitForChild("Components")
 local tycoonStorage = game:GetService("ServerStorage"):WaitForChild("TycoonStorage")
-local playerManager = require(game:GetService("ServerScriptService").Server:WaitForChild("PlayerManager"))
+local playerManager = require(game:GetService("ServerScriptService").Source:WaitForChild("PlayerManager"))
 
 local function NewModel(model, cframe)
 	local newModel = model:Clone()
