@@ -98,13 +98,13 @@ Melee.RoyalSword = {
 		},
 		Swing = {
 			ID = { baseURL:format(4953118406), baseURL:format(4307216336) },
-			Volume = 0.8,
-			PlaybackSpeed = 0.7,
+			Volume = 0.5,
+			PlaybackSpeed = 0.4,
 		},
 		Hit = {
 			ID = { baseURL:format(4459570664), baseURL:format(4459571224) },
 			Volume = 0.4,
-			PlaybackSpeed = 0.3,
+			PlaybackSpeed = 0.6,
 		},
 	},
 	Specs = {
@@ -115,13 +115,13 @@ Melee.RoyalSword = {
 		Trail = {
 			Instance = ReplicatedStorage.Trails:WaitForChild("RoyalSwordTrail"),
 			Attachments = function(_player, _tool)
-				local handle = _tool.Handle
+				local handle = _tool:WaitForChild("Handle")
 
 				return handle.Trail0, handle.Trail1
 			end,
 		},
 		HitBox = function(_player, _tool)
-			local blade = _tool.Blade
+			local blade = _tool:WaitForChild("Blade")
 			return blade
 		end,
 	},

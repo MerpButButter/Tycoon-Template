@@ -18,6 +18,8 @@ local HitboxService = require(ReplicatedStorage:WaitForChild("HitboxService"))
 local modTool = {}
 modTool.__index = modTool
 
+type table = { [any]: any }
+
 -----------------------------------------------------------------------------------------------
 function modTool.New(player: Player, tool: Tool)
 	local self = setmetatable({}, modTool)
@@ -48,7 +50,6 @@ end
 
 local function tableCount(table)
 	if typeof(table) ~= "table" then
-		warn("Not a table")
 		return 0
 	end
 	local length = 0
@@ -63,19 +64,18 @@ local function createClass(parent, className: string, id: string | table, name: 
 		return
 	end
 
-	warn(id)
 	if className == "Animation" then
 		local anim: Animation
 		if typeof(id) == "table" and tableCount(id) > 1 then
 			for i, soundData in pairs(id) do
 				anim = Instance.new("Animation")
-				warn("ANIMS", soundData)
 				anim.AnimationId = soundData
 				anim.Name = (name .. i) or "Animation"
 				anim.Parent = parent
 			end
 		else
 			anim = Instance.new("Animation")
+			id = id :: string
 			anim.AnimationId = id
 			anim.Name = name or "Animation"
 			anim.Parent = parent
@@ -94,6 +94,7 @@ local function createClass(parent, className: string, id: string | table, name: 
 				sound.Parent = parent
 			end
 		else
+			id = id :: table
 			sound = Instance.new("Sound")
 			sound.SoundId = id.ID
 			sound.Volume = id.Volume or 1
@@ -145,7 +146,7 @@ function modTool:Init()
 	self.Trail.Attachment0 = attach0
 	self.Trail.Attachment1 = attach1
 	self.Trail.Parent = self.Hitbox
-	warn("TRAIL SETUP")
+	print("TRAIL SETUP")
 	-----------------------------------------------------------------------------------------
 	--Create folders with sounds and animations
 	animationFolder = createFolder("Animations", self.Tool)
@@ -173,7 +174,8 @@ end
 
 -- Checks if player is dead and if tool exists
 local function sanityCheck(tool: Tool, plr: Player, hitbox: BasePart)
-	return not (plr or plr.Character or plr.Character.PrimaryPart or tool or hitbox)
+	local character = plr.Character
+	return not (plr or plr.Character or character.PrimaryPart or tool or hitbox)
 end
 
 local function bodyForce(humanoid: Humanoid, amount: number, parent: Instance?)
@@ -229,20 +231,20 @@ function modTool:Equipped()
 			end
 			cooldown = true
 
-			self.Sfx.Swing:Play()
+			swingSfx[Rand:NextInteger(1, #swingSfx)]:Play()
 
-			-- local priority = Enum.RenderPriority.Last.Value
+			local priority = Enum.RenderPriority.Last.Value
 
-			-- local swingShake = shake.new()
-			-- swingShake.FadeInTime = 0
-			-- swingShake.Frequency = 0.1
-			-- swingShake.Amplitude = self.Amplitude
-			-- swingShake.RotationInfluence = Vector3.new(0.1, 0.1, 0.1)
+			local swingShake = shake.new()
+			swingShake.FadeInTime = 0
+			swingShake.Frequency = 0.1
+			swingShake.Amplitude = self.Amplitude
+			swingShake.RotationInfluence = Vector3.new(0.1, 0.1, 0.1)
 
-			-- swingShake:Start()
-			-- swingShake:BindToRenderStep(shake.NextRenderName(), priority, function(pos, rot)
-			-- 	camera.CFrame *= CFrame.new(pos) * CFrame.Angles(rot.X, rot.Y, rot.Z)
-			-- end)
+			swingShake:Start()
+			swingShake:BindToRenderStep(shake.NextRenderName(), priority, function(pos, rot)
+				camera.CFrame *= CFrame.new(pos) * CFrame.Angles(rot.X, rot.Y, rot.Z)
+			end)
 
 			bodyForce(self.Player.Character.Humanoid, 1)
 
@@ -288,7 +290,7 @@ function modTool:Equipped()
 
 				bodyForce(self.Player.Character.Humanoid, 5, humanoid.RootPart)
 
-				self.Sfx.Hit:Play()
+				hitSfx[Rand:NextInteger(1, #hitSfx)]:Play()
 				humanoid:TakeDamage(self.Dmg)
 			end)
 
@@ -306,12 +308,12 @@ function modTool:Equipped()
 		ContextActionService:SetPosition("Swing", UDim2.fromScale(24, 230))
 	end)
 
+	local db = true
 	removedConnect = self.Tool.ChildRemoved:Connect(function()
 		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 			return
 		end
 
-		local db = true
 		ContextActionService:UnbindAction("Swing")
 
 		if newHitbox and Activated then
@@ -331,12 +333,21 @@ function modTool:Equipped()
 		end
 	end)
 
-	handleRemovedConnect = self.Tool.Handle.ChildRemoved:Connect(function()
+	local removedItems = {}
+	local dbounce = false
+	handleRemovedConnect = self.Tool.Handle.ChildRemoved:Connect(function(instance: Instance)
 		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 			return
 		end
+		local model = instance:FindFirstAncestorOfClass("Model")
+		if not model then
+			return
+		end
+		if table.find(removedItems, model) then
+			return
+		end
 
-		local db = true
+		table.insert(removedItems, model)
 		ContextActionService:UnbindAction("Swing")
 
 		for _, track: AnimationTrack in ipairs(playingTracks) do
@@ -348,11 +359,13 @@ function modTool:Equipped()
 			Activated = false
 		end
 
-		if db then
-			db = false
+		if dbounce then
+			dbounce = false
 			local toolClone = game:GetService("StarterPack")[self.Tool.Name]:Clone()
 			toolClone.Parent = self.Player.Backpack
 			self.Tool:Destroy()
+			task.wait(3)
+			table.clear(removedItems)
 		end
 	end)
 end
