@@ -365,6 +365,7 @@ function modTool:Equipped()
 			toolClone.Parent = self.Player.Backpack
 			self.Tool:Destroy()
 			task.wait(3)
+			dbounce = true
 			table.clear(removedItems)
 		end
 	end)
