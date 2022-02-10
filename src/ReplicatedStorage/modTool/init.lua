@@ -74,9 +74,9 @@ local function createClass(parent, className: string, id: string | table, name: 
 				anim.Parent = parent
 			end
 		else
+			local animID = id :: string
 			anim = Instance.new("Animation")
-			id = id :: string
-			anim.AnimationId = id
+			anim.AnimationId = animID
 			anim.Name = name or "Animation"
 			anim.Parent = parent
 		end
@@ -94,11 +94,11 @@ local function createClass(parent, className: string, id: string | table, name: 
 				sound.Parent = parent
 			end
 		else
-			id = id :: table
+			local tableID = id :: table
 			sound = Instance.new("Sound")
-			sound.SoundId = id.ID
-			sound.Volume = id.Volume or 1
-			sound.PlaybackSpeed = id.PlaybackSpeed or 1
+			sound.SoundId = tableID.ID
+			sound.Volume = tableID.Volume or 1
+			sound.PlaybackSpeed = tableID.PlaybackSpeed or 1
 			sound.Name = name or "Sound"
 			sound.Parent = parent
 		end
