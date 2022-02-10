@@ -113,9 +113,23 @@ local function createFolder(name: string, parent)
 	return folder
 end
 
+local function findClass(loc: Instance, name: string, classType: any): table
+	local classObjects = {}
+	for _, class: Instance in ipairs(loc:GetChildren()) do
+		if class.Name:match(name) and class:IsA(classType) then
+			table.insert(classObjects, class)
+		end
+	end
+
+	return classObjects
+end
+
 local animationFolder: Folder
 local soundFolder: Folder
 
+local swingAnims: table
+local swingSfx: table
+local hitSfx: table
 -----------------------------------------------------------------------------------------
 -- Init Function that runs all other sub functions and sets up Trails and Folders with objects
 function modTool:Init()
@@ -146,9 +160,15 @@ function modTool:Init()
 	end
 
 	-----------------------------------------------------------------------------------------
+	-- Getting Animation and Sound Setup -------------------------------------------------------
+	swingAnims = findClass(self.Tool:WaitForChild("Animations"), "Swing*", "Animation")
+	swingSfx = findClass(self.Tool:WaitForChild("Sounds"), "Swing*", "Sound")
+	hitSfx = findClass(self.Tool:WaitForChild("Sounds"), "Hit*", "Sound")
+	----------------------------------------------------------------
 	-----------------------------------------------------------------------------------------
 	self:Equipped()
 	self:Unequipped()
+	print("SETUP", swingAnims, swingSfx, hitSfx)
 end
 
 -- Checks if player is dead and if tool exists
@@ -197,15 +217,6 @@ function modTool:Equipped()
 
 		local equipSfx = self.Tool.Sounds.Equip
 		equipSfx:Play()
-		----------------------------------------------------------------
-		-- Setup -------------------------------------------------------
-		local swingAnims = {}
-		for _, animation: Instance in ipairs(self.Tool:WaitForChild("Sounds"):GetChildren()) do
-			if animation.Name:match("Swing")  and animation:IsA("Animation") then
-				table.insert(swingAnims, animation)
-			end
-		end
-		----------------------------------------------------------------
 		ContextActionService:BindAction("Swing", function(_, inputState, _inputObject: InputObject)
 			if inputState ~= Enum.UserInputState.Begin then
 				return
@@ -235,12 +246,10 @@ function modTool:Equipped()
 
 			bodyForce(self.Player.Character.Humanoid, 1)
 
-
-
 			local swingTrack = self.Player.Character
 				:WaitForChild("Humanoid")
 				:WaitForChild("Animator")
-				:LoadAnimation(swingAnims[Rand:NextInteger(1,#swingAnims)])
+				:LoadAnimation(swingAnims[Rand:NextInteger(1, #swingAnims)])
 			swingTrack:Play(0.05)
 
 			local Params = RaycastParams.new()
