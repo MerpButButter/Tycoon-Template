@@ -5,13 +5,14 @@
 -----------------------------------------------------------------------------------------------
 local Debris = game:GetService("Debris")
 local ContextActionService = game:GetService("ContextActionService")
+local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Rand = Random.new()
 
 local raycastHitbox = require(ReplicatedStorage:WaitForChild("RaycastHitboxV4"))
 local camera = workspace:WaitForChild("Camera")
 local shake = require(ReplicatedStorage.Packages:WaitForChild("shake"))
-local meleeData = require(ReplicatedStorage.Source:WaitForChild("meleeData"))
+local meleeData = require(ServerStorage.Source.meleeData)
 local hitEffectHandler = require(ReplicatedStorage.HitEffectHandler)
 local HitboxService = require(ReplicatedStorage:WaitForChild("HitboxService"))
 -----------------------------------------------------------------------------------------------
@@ -131,6 +132,8 @@ local soundFolder: Folder
 local swingAnims: table
 local swingSfx: table
 local hitSfx: table
+
+local onInputRemote: RemoteEvent
 -----------------------------------------------------------------------------------------
 -- Init Function that runs all other sub functions and sets up Trails and Folders with objects
 function modTool:Init()
@@ -141,27 +144,46 @@ function modTool:Init()
 	-- Prep
 	--------------------------------
 	-- Trail Setup
-	self.Trail = self.TrailSpecs.Instance:Clone()
-	local attach0, attach1 = self.TrailSpecs.Attachments(self.Player, self.Tool)
-	self.Trail.Attachment0 = attach0
-	self.Trail.Attachment1 = attach1
-	self.Trail.Parent = self.Hitbox
-	print("TRAIL SETUP")
-	-----------------------------------------------------------------------------------------
-	--Create folders with sounds and animations
-	animationFolder = createFolder("Animations", self.Tool)
-	soundFolder = createFolder("Sounds", self.Tool)
-
-	for name, sfxData: table in pairs(self.Sfx) do
-		createClass(soundFolder, "Sound", sfxData, tostring(name))
+	if not self.Hitbox:FindFirstChildOfClass("Trail") then
+		self.Trail = self.TrailSpecs.Instance:Clone()
+		local attach0, attach1 = self.TrailSpecs.Attachments(self.Player, self.Tool)
+		self.Trail.Attachment0 = attach0
+		self.Trail.Attachment1 = attach1
+		self.Trail.Parent = self.Hitbox
+		print("TRAIL SETUP")
 	end
-
-	for name, animData: table in pairs(self.Anims) do
-		createClass(animationFolder, "Animation", animData, tostring(name))
-	end
-
 	-----------------------------------------------------------------------------------------
-	-- Getting Animation and Sound Setup -------------------------------------------------------
+	-- Create folders with sounds and animations
+	if not self.Tool:FindFirstChildOfClass("Folder") then
+		animationFolder = createFolder("Animations", self.Tool)
+		soundFolder = createFolder("Sounds", self.Tool)
+
+		for name, sfxData: table in pairs(self.Sfx) do
+			createClass(soundFolder, "Sound", sfxData, tostring(name))
+		end
+
+		for name, animData: table in pairs(self.Anims) do
+			createClass(animationFolder, "Animation", animData, tostring(name))
+		end
+	end
+	-----------------------------------------------------------------------------------------
+	-- Setup Folder with Remotes
+	if not ReplicatedStorage:FindFirstChild("Remotes") then
+		local remoteFolder = createFolder("ToolRemotes", ReplicatedStorage)
+		onInputRemote = Instance.new("RemoteEvent")
+		onInputRemote.Name = "OnInput"
+		onInputRemote.Parent = remoteFolder
+		print("CREATED REMOTES")
+	end
+	-----------------------------------------------------------------------------------------
+	-- Setup LocalPlayer Scripts
+	if not self.Player.PlayerGui:FindFirstChild("ClientTool") then
+		local localScript: LocalScript = script.ClientTool:Clone()
+		localScript.Parent = self.Player.PlayerGui
+		localScript.Disabled = false
+	end
+	-----------------------------------------------------------------------------------------
+	-- Getting Animation and Sound Setup ----------------------------------------------------
 	swingAnims = findClass(self.Tool:WaitForChild("Animations"), "Swing*", "Animation")
 	swingSfx = findClass(self.Tool:WaitForChild("Sounds"), "Swing*", "Sound")
 	hitSfx = findClass(self.Tool:WaitForChild("Sounds"), "Hit*", "Sound")
@@ -219,7 +241,10 @@ function modTool:Equipped()
 
 		local equipSfx = self.Tool.Sounds.Equip
 		equipSfx:Play()
-		ContextActionService:BindAction("Swing", function(_, inputState, _inputObject: InputObject)
+		----------------------------------------------------------------
+		-- Swing Initialization
+		----------------------------------------------------------------
+		ContextActionService:BindAction("Swing", function(_name, inputState, _inputObject: InputObject)
 			if inputState ~= Enum.UserInputState.Begin then
 				return
 			end
@@ -339,6 +364,7 @@ function modTool:Equipped()
 		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 			return
 		end
+		-- So it give you the tool multiple times
 		local model = instance:FindFirstAncestorOfClass("Model")
 		if not model then
 			return
@@ -359,13 +385,13 @@ function modTool:Equipped()
 			Activated = false
 		end
 
-		if dbounce then
-			dbounce = false
+		if not dbounce then
+			dbounce = true
 			local toolClone = game:GetService("StarterPack")[self.Tool.Name]:Clone()
 			toolClone.Parent = self.Player.Backpack
 			self.Tool:Destroy()
 			task.wait(3)
-			dbounce = true
+			dbounce = false
 			table.clear(removedItems)
 		end
 	end)

@@ -97,19 +97,30 @@ Melee.RoyalSword = {
 			PlaybackSpeed = 1,
 		},
 		Swing = {
-			ID = { baseURL:format(4953118406), baseURL:format(4307216336) },
-			Volume = 0.5,
+			ID = {
+				baseURL:format(169310429),
+				baseURL:format(169310436),
+				baseURL:format(169310447),
+				baseURL:format(169310455),
+			},
+			Volume = 0.8,
 			PlaybackSpeed = 0.4,
 		},
 		Hit = {
-			ID = { baseURL:format(4459570664), baseURL:format(4459571224) },
-			Volume = 0.4,
-			PlaybackSpeed = 0.6,
+			ID = { 
+				baseURL:format(4459570664), 
+				baseURL:format(4459571224),
+				baseURL:format(4459572763),
+				baseURL:format(4459573786),
+				baseURL:format(4459571443),
+			},
+			Volume = 0.35,
+			PlaybackSpeed = 0.5,
 		},
 	},
 	Specs = {
 		Damage = 30,
-		Cooldown = 3,
+		Cooldown = .5,
 		Shake = 1,
 		HitEffectLocation = nil,
 		Trail = {
@@ -117,7 +128,7 @@ Melee.RoyalSword = {
 			Attachments = function(_player, _tool)
 				local handle = _tool:WaitForChild("Handle")
 
-				return handle.Trail0, handle.Trail1
+				return handle:FindFirstChild("Trail0"), handle:FindFirstChild("Trail1")
 			end,
 		},
 		HitBox = function(_player, _tool)
