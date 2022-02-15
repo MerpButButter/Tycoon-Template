@@ -14,7 +14,7 @@ local camera = workspace:WaitForChild("Camera")
 local shake = require(ReplicatedStorage.Packages:WaitForChild("shake"))
 local meleeData = require(ServerStorage.Source.meleeData)
 local hitEffectHandler = require(ReplicatedStorage.HitEffectHandler)
-local HitboxService = require(ReplicatedStorage:WaitForChild("HitboxService"))
+local _HitboxService = require(ReplicatedStorage:WaitForChild("HitboxService"))
 -----------------------------------------------------------------------------------------------
 local modTool = {}
 modTool.__index = modTool
