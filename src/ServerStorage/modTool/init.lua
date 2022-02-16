@@ -4,8 +4,8 @@
 
 -----------------------------------------------------------------------------------------------
 local Debris = game:GetService("Debris")
-local ContextActionService = game:GetService("ContextActionService")
 local ServerStorage = game:GetService("ServerStorage")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Rand = Random.new()
 
@@ -134,6 +134,7 @@ local swingSfx: table
 local hitSfx: table
 
 local onInputRemote: RemoteEvent
+local characterAdded: RBXScriptConnection
 -----------------------------------------------------------------------------------------
 -- Init Function that runs all other sub functions and sets up Trails and Folders with objects
 function modTool:Init()
@@ -176,10 +177,10 @@ function modTool:Init()
 		print("CREATED REMOTES")
 	end
 	-----------------------------------------------------------------------------------------
-	-- Setup LocalPlayer Scripts
-	if not self.Player.PlayerGui:FindFirstChild("ClientTool") then
+	-- Parenting the local script
+	if not self.Player:WaitForChild("PlayerGui"):WaitForChild("LocalScript"):FindFirstChild("ClientTool") then
 		local localScript: LocalScript = script.ClientTool:Clone()
-		localScript.Parent = self.Player.PlayerGui
+		localScript.Parent = self.Player:WaitForChild("PlayerGui"):WaitForChild("LocalScript")
 		localScript.Disabled = false
 	end
 	-----------------------------------------------------------------------------------------
@@ -242,158 +243,74 @@ function modTool:Equipped()
 		local equipSfx = self.Tool.Sounds.Equip
 		equipSfx:Play()
 		----------------------------------------------------------------
-		-- Swing Initialization
+		-- Attack Initialization
 		----------------------------------------------------------------
-		ContextActionService:BindAction("Swing", function(_name, inputState, _inputObject: InputObject)
-			if inputState ~= Enum.UserInputState.Begin then
-				return
-			end
+		onInputRemote.OnServerEvent:Connect(function(player, name)
+			self:Swing()
+			print(player)
+			print(name)
+		end)
+
+		local db = true
+		removedConnect = self.Tool.ChildRemoved:Connect(function()
 			if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 				return
 			end
-			if cooldown then
+
+			if newHitbox and Activated then
+				newHitbox:Destroy()
+				Activated = false
+			end
+
+			for _, track: AnimationTrack in ipairs(playingTracks) do
+				track:Stop()
+			end
+
+			if db then
+				db = false
+				local toolClone = game:GetService("StarterPack")[self.Tool.Name]:Clone()
+				toolClone.Parent = self.Player.Backpack
+				self.Tool:Destroy()
+			end
+		end)
+
+		local removedItems = {}
+		local dbounce = false
+		handleRemovedConnect = self.Tool.Handle.ChildRemoved:Connect(function(instance: Instance)
+			if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 				return
 			end
-			cooldown = true
-
-			swingSfx[Rand:NextInteger(1, #swingSfx)]:Play()
-
-			local priority = Enum.RenderPriority.Last.Value
-
-			local swingShake = shake.new()
-			swingShake.FadeInTime = 0
-			swingShake.Frequency = 0.1
-			swingShake.Amplitude = self.Amplitude
-			swingShake.RotationInfluence = Vector3.new(0.1, 0.1, 0.1)
-
-			swingShake:Start()
-			swingShake:BindToRenderStep(shake.NextRenderName(), priority, function(pos, rot)
-				camera.CFrame *= CFrame.new(pos) * CFrame.Angles(rot.X, rot.Y, rot.Z)
-			end)
-
-			bodyForce(self.Player.Character.Humanoid, 1)
-
-			local swingTrack = self.Player.Character
-				:WaitForChild("Humanoid")
-				:WaitForChild("Animator")
-				:LoadAnimation(swingAnims[Rand:NextInteger(1, #swingAnims)])
-			swingTrack:Play(0.05)
-
-			local Params = RaycastParams.new()
-			Params.FilterDescendantsInstances = { self.Tool:GetChildren(), self.Player.Character }
-			Params.FilterType = Enum.RaycastFilterType.Blacklist
-			if not self.Tool.Blade then
+			-- So it give you the tool multiple times
+			local model = instance:FindFirstAncestorOfClass("Model")
+			if not model then
 				return
 			end
-			newHitbox = raycastHitbox.new(self.Tool.Blade)
-			newHitbox.RaycastParams = Params
+			if table.find(removedItems, model) then
+				return
+			end
 
-			newHitbox.OnHit:Connect(function(_hit, humanoid: Humanoid)
-				if sanityCheck(self.Tool, self.Player, self.Hitbox) then
-					return
-				end
-				if humanoid.Health <= 0 then
-					return
-				end
+			table.insert(removedItems, model)
 
-				local particleEffect = hitEffectHandler.new(
-					humanoid.RootPart,
-					game:GetService("ReplicatedStorage").Effects:WaitForChild("MainPar"),
-					1,
-					1
-				)
+			for _, track: AnimationTrack in ipairs(playingTracks) do
+				track:Stop()
+			end
 
-				particleEffect:GenerateParticles()
+			if newHitbox and Activated then
+				newHitbox:Destroy()
+				Activated = false
+			end
 
-				local meshEffect = hitEffectHandler.new(
-					humanoid.RootPart,
-					game:GetService("ReplicatedStorage").Effects:WaitForChild("MeshStick"),
-					0.25,
-					10
-				)
-				meshEffect:MeshExplode()
-
-				bodyForce(self.Player.Character.Humanoid, 5, humanoid.RootPart)
-
-				hitSfx[Rand:NextInteger(1, #hitSfx)]:Play()
-				humanoid:TakeDamage(self.Dmg)
-			end)
-
-			newHitbox:HitStart()
-			Activated = true
-			swingTrack.Stopped:Connect(function()
-				if newHitbox and Activated then
-					newHitbox:HitStop()
-					Activated = false
-				end
-				task.wait(self.Cooldown)
-				cooldown = false
-			end)
-		end, true, Enum.UserInputType.MouseButton1, Enum.KeyCode.E)
-		ContextActionService:SetPosition("Swing", UDim2.fromScale(24, 230))
-	end)
-
-	local db = true
-	removedConnect = self.Tool.ChildRemoved:Connect(function()
-		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
-			return
-		end
-
-		ContextActionService:UnbindAction("Swing")
-
-		if newHitbox and Activated then
-			newHitbox:Destroy()
-			Activated = false
-		end
-
-		for _, track: AnimationTrack in ipairs(playingTracks) do
-			track:Stop()
-		end
-
-		if db then
-			db = false
-			local toolClone = game:GetService("StarterPack")[self.Tool.Name]:Clone()
-			toolClone.Parent = self.Player.Backpack
-			self.Tool:Destroy()
-		end
-	end)
-
-	local removedItems = {}
-	local dbounce = false
-	handleRemovedConnect = self.Tool.Handle.ChildRemoved:Connect(function(instance: Instance)
-		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
-			return
-		end
-		-- So it give you the tool multiple times
-		local model = instance:FindFirstAncestorOfClass("Model")
-		if not model then
-			return
-		end
-		if table.find(removedItems, model) then
-			return
-		end
-
-		table.insert(removedItems, model)
-		ContextActionService:UnbindAction("Swing")
-
-		for _, track: AnimationTrack in ipairs(playingTracks) do
-			track:Stop()
-		end
-
-		if newHitbox and Activated then
-			newHitbox:Destroy()
-			Activated = false
-		end
-
-		if not dbounce then
-			dbounce = true
-			local toolClone = game:GetService("StarterPack")[self.Tool.Name]:Clone()
-			toolClone.Parent = self.Player.Backpack
-			self.Tool:Destroy()
-			task.wait(3)
-			dbounce = false
-			table.clear(removedItems)
-		end
+			if not dbounce then
+				dbounce = true
+				local toolClone = game:GetService("StarterPack")[self.Tool.Name]:Clone()
+				toolClone.Parent = self.Player.Backpack
+				self.Tool:Destroy()
+				task.wait(3)
+				dbounce = false
+				table.clear(removedItems)
+			end
+		end)
+		--------------------------------------
 	end)
 end
 
@@ -402,8 +319,6 @@ function modTool:Unequipped()
 		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 			return
 		end
-
-		ContextActionService:UnbindAction("Swing")
 
 		for _, track: AnimationTrack in ipairs(playingTracks) do
 			track:Stop()
@@ -419,4 +334,91 @@ function modTool:Unequipped()
 	end)
 end
 
+-------------------------------------------------------------------------------------------------
+-- Attacks
+--! ADD COOLDOWN TO MAKE IT WORK
+function modTool:Swing()
+	print("made it to swing fucntion")
+	if sanityCheck(self.Tool, self.Player, self.Hitbox) then
+		return
+	end
+	print('MADE THROUGH SANITY CHECK')
+	print("MADE IT THROUGH COOLDOWN")
+	cooldown = true
+
+	swingSfx[Rand:NextInteger(1, #swingSfx)]:Play()
+
+	local priority = Enum.RenderPriority.Last.Value
+
+	local swingShake = shake.new()
+	swingShake.FadeInTime = 0
+	swingShake.Frequency = 0.1
+	swingShake.Amplitude = self.Amplitude
+	swingShake.RotationInfluence = Vector3.new(0.1, 0.1, 0.1)
+
+	swingShake:Start()
+	swingShake:BindToRenderStep(shake.NextRenderName(), priority, function(pos, rot)
+		camera.CFrame *= CFrame.new(pos) * CFrame.Angles(rot.X, rot.Y, rot.Z)
+	end)
+
+	bodyForce(self.Player.Character.Humanoid, 1)
+
+	local swingTrack = self.Player.Character
+		:WaitForChild("Humanoid")
+		:WaitForChild("Animator")
+		:LoadAnimation(swingAnims[Rand:NextInteger(1, #swingAnims)])
+	swingTrack:Play(0.05)
+
+	local Params = RaycastParams.new()
+	Params.FilterDescendantsInstances = { self.Tool:GetChildren(), self.Player.Character }
+	Params.FilterType = Enum.RaycastFilterType.Blacklist
+	if not self.Tool:FindFirstChild("Blade") then
+		return
+	end
+	newHitbox = raycastHitbox.new(self.Tool.Blade)
+	newHitbox.RaycastParams = Params
+
+	newHitbox.OnHit:Connect(function(_hit, humanoid: Humanoid)
+		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
+			return
+		end
+		if humanoid.Health <= 0 then
+			return
+		end
+
+		local particleEffect = hitEffectHandler.new(
+			humanoid.RootPart,
+			game:GetService("ReplicatedStorage").Effects:WaitForChild("MainPar"),
+			1,
+			1
+		)
+
+		particleEffect:GenerateParticles()
+
+		local meshEffect = hitEffectHandler.new(
+			humanoid.RootPart,
+			game:GetService("ReplicatedStorage").Effects:WaitForChild("MeshStick"),
+			0.25,
+			10
+		)
+		meshEffect:MeshExplode()
+
+		bodyForce(self.Player.Character.Humanoid, 5, humanoid.RootPart)
+
+		hitSfx[Rand:NextInteger(1, #hitSfx)]:Play()
+		humanoid:TakeDamage(self.Dmg)
+	end)
+
+	newHitbox:HitStart()
+	Activated = true
+	swingTrack.Stopped:Connect(function()
+		if newHitbox and Activated then
+			newHitbox:HitStop()
+			Activated = false
+		end
+		task.wait(self.Cooldown)
+		cooldown = false
+	end)
+end
+-------------------------------------------------------------------------------------------------
 return modTool
