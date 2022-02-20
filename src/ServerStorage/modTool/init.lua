@@ -14,7 +14,7 @@ local camera = workspace:WaitForChild("Camera")
 local shake = require(ReplicatedStorage.Packages:WaitForChild("shake"))
 local meleeData = require(ServerStorage.Source.meleeData)
 local hitEffectHandler = require(ReplicatedStorage.HitEffectHandler)
-local _HitboxService = require(ReplicatedStorage:WaitForChild("HitboxService"))
+local HitboxService = require(ReplicatedStorage:WaitForChild("HitboxService"))
 -----------------------------------------------------------------------------------------------
 local modTool = {}
 modTool.__index = modTool
@@ -27,6 +27,7 @@ function modTool.New(player: Player, tool: Tool)
 	self.Player = player
 	self.Tool = tool
 
+	print('.NEW TOOL FUNCTION')
 	local toolData = meleeData[tool.Name]
 
 	if toolData then
@@ -134,7 +135,6 @@ local swingSfx: table
 local hitSfx: table
 
 local onInputRemote: RemoteEvent
-local characterAdded: RBXScriptConnection
 -----------------------------------------------------------------------------------------
 -- Init Function that runs all other sub functions and sets up Trails and Folders with objects
 function modTool:Init()
@@ -178,9 +178,15 @@ function modTool:Init()
 	end
 	-----------------------------------------------------------------------------------------
 	-- Parenting the local script
-	if not self.Player:WaitForChild("PlayerGui"):WaitForChild("LocalScript"):FindFirstChild("ClientTool") then
+	local localScriptGUI
+	if not self.Player.PlayerGui:FindFirstChild("LocalScript") then
+		localScriptGUI = Instance.new("ScreenGui")
+		localScriptGUI.ResetOnSpawn = false
+		localScriptGUI.Parent = self.Player.PlayerGui
+	end
+	if not localScriptGUI:FindFirstChild("ClientTool") then
 		local localScript: LocalScript = script.ClientTool:Clone()
-		localScript.Parent = self.Player:WaitForChild("PlayerGui"):WaitForChild("LocalScript")
+		localScript.Parent = localScriptGUI
 		localScript.Disabled = false
 	end
 	-----------------------------------------------------------------------------------------
@@ -188,6 +194,7 @@ function modTool:Init()
 	swingAnims = findClass(self.Tool:WaitForChild("Animations"), "Swing*", "Animation")
 	swingSfx = findClass(self.Tool:WaitForChild("Sounds"), "Swing*", "Sound")
 	hitSfx = findClass(self.Tool:WaitForChild("Sounds"), "Hit*", "Sound")
+	print("TOOLS PARENT:",self.Tool.Parent)
 	----------------------------------------------------------------
 	-----------------------------------------------------------------------------------------
 	self:Equipped()
@@ -219,10 +226,12 @@ end
 
 local newHitbox
 local Activated
+local Params
 local cooldown
 local removedConnect: RBXScriptConnection
 local handleRemovedConnect: RBXScriptConnection
 local playingTracks = {}
+local lastHit = {}
 
 --------------------------------------------------------------------------------------------
 -- Init Functions
@@ -234,31 +243,36 @@ function modTool:Equipped()
 			return
 		end
 
+		self.Hitbox:SetNetworkOwner(nil)
 		local idleAnim = self.Tool.Animations.Idle
 		local idleTrack = self.Player.Character.Humanoid.Animator:LoadAnimation(idleAnim)
 		table.insert(playingTracks, idleTrack)
 		idleTrack.Looped = true
 		idleTrack:Play(0.05)
 
+		Params = OverlapParams.new()
+		Params.FilterDescendantsInstances = { self.Tool:GetChildren(), self.Player.Character }
+		Params.FilterType = Enum.RaycastFilterType.Blacklist
+
 		local equipSfx = self.Tool.Sounds.Equip
 		equipSfx:Play()
 		----------------------------------------------------------------
 		-- Attack Initialization
 		----------------------------------------------------------------
-		onInputRemote.OnServerEvent:Connect(function(player, name)
-			self:Swing()
-			print(player)
-			print(name)
+		onInputRemote.OnServerEvent:Connect(function(_player, _name)
+			self:Swing(self.Player,self.Tool)
+			print(self.Tool.Parent)
 		end)
 
-		local db = true
+		----------------------------------------------------------------
+
 		removedConnect = self.Tool.ChildRemoved:Connect(function()
 			if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 				return
 			end
 
 			if newHitbox and Activated then
-				newHitbox:Destroy()
+				newHitbox:Stop()
 				Activated = false
 			end
 
@@ -266,16 +280,11 @@ function modTool:Equipped()
 				track:Stop()
 			end
 
-			if db then
-				db = false
-				local toolClone = game:GetService("StarterPack")[self.Tool.Name]:Clone()
-				toolClone.Parent = self.Player.Backpack
-				self.Tool:Destroy()
-			end
+			Debris:AddItem(self.Tool)
+			table.clear(lastHit)
 		end)
 
 		local removedItems = {}
-		local dbounce = false
 		handleRemovedConnect = self.Tool.Handle.ChildRemoved:Connect(function(instance: Instance)
 			if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 				return
@@ -295,20 +304,14 @@ function modTool:Equipped()
 				track:Stop()
 			end
 
-			if newHitbox and Activated then
+			if newHitbox:GetState() and Activated then
 				newHitbox:Destroy()
 				Activated = false
 			end
 
-			if not dbounce then
-				dbounce = true
-				local toolClone = game:GetService("StarterPack")[self.Tool.Name]:Clone()
-				toolClone.Parent = self.Player.Backpack
-				self.Tool:Destroy()
-				task.wait(3)
-				dbounce = false
-				table.clear(removedItems)
-			end
+			Debris:AddItem(self.Tool)
+			table.clear(removedItems)
+			table.clear(lastHit)
 		end)
 		--------------------------------------
 	end)
@@ -324,28 +327,36 @@ function modTool:Unequipped()
 			track:Stop()
 		end
 
-		if newHitbox and Activated then
+		if newHitbox:GetState() and Activated then
 			newHitbox:Destroy()
 			Activated = false
 		end
 
 		handleRemovedConnect:Disconnect()
 		removedConnect:Disconnect()
+		table.clear(lastHit)
 	end)
 end
 
 -------------------------------------------------------------------------------------------------
 -- Attacks
---! ADD COOLDOWN TO MAKE IT WORK
-function modTool:Swing()
+--! add hitbox service
+cooldown = false
+function modTool:Swing(player: Player,_tool:Tool)
 	print("made it to swing fucntion")
-	if sanityCheck(self.Tool, self.Player, self.Hitbox) then
+	local tool = player.Character:FindFirstChildOfClass("Tool")
+	if sanityCheck(tool, player, tool:FindFirstChild(self.Hitbox.Name)) then
 		return
 	end
-	print('MADE THROUGH SANITY CHECK')
-	print("MADE IT THROUGH COOLDOWN")
-	cooldown = true
-
+	if cooldown then
+		return
+	end
+	-- Cooldown
+	task.spawn(function()
+		cooldown = true
+		task.wait(self.Cooldown)
+		cooldown = false
+	end)
 	swingSfx[Rand:NextInteger(1, #swingSfx)]:Play()
 
 	local priority = Enum.RenderPriority.Last.Value
@@ -369,19 +380,35 @@ function modTool:Swing()
 		:LoadAnimation(swingAnims[Rand:NextInteger(1, #swingAnims)])
 	swingTrack:Play(0.05)
 
-	local Params = RaycastParams.new()
-	Params.FilterDescendantsInstances = { self.Tool:GetChildren(), self.Player.Character }
-	Params.FilterType = Enum.RaycastFilterType.Blacklist
-	if not self.Tool:FindFirstChild("Blade") then
-		return
-	end
-	newHitbox = raycastHitbox.new(self.Tool.Blade)
-	newHitbox.RaycastParams = Params
+			print("PARENT:",tool.Parent)
+			print("NAME:",tool.Name)
+			print("IN CHARACTER:",player.Character:FindFirstChildOfClass("Tool"))
+	local Hitbox = tool:WaitForChild(self.Hitbox.Name)
 
-	newHitbox.OnHit:Connect(function(_hit, humanoid: Humanoid)
+	newHitbox = HitboxService:CreateWithPart(Hitbox, Params)
+	warn("CREATED NEW HITBOX")
+	newHitbox:Start()
+	newHitbox.Entered:Connect(function(object: BasePart)
 		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
 			return
 		end
+		print("sanity check")
+
+		local chr = object:FindFirstAncestorOfClass("Model")
+		if not Players:GetPlayerFromCharacter(chr) then
+			return
+		end
+		print("character check")
+
+		if table.find(lastHit, chr) then
+			return
+		end
+		print("table check")
+
+		table.insert(lastHit, chr)
+		print(chr)
+
+		local humanoid: Humanoid = chr:WaitForChild("Humanoid")
 		if humanoid.Health <= 0 then
 			return
 		end
@@ -409,15 +436,15 @@ function modTool:Swing()
 		humanoid:TakeDamage(self.Dmg)
 	end)
 
-	newHitbox:HitStart()
 	Activated = true
+	warn("STARTED HITBOX")
 	swingTrack.Stopped:Connect(function()
-		if newHitbox and Activated then
-			newHitbox:HitStop()
+		if newHitbox:GetState() and Activated then
+			newHitbox:Stop()
+			table.clear(lastHit)
+			warn("STOPPED HITBOX")
 			Activated = false
 		end
-		task.wait(self.Cooldown)
-		cooldown = false
 	end)
 end
 -------------------------------------------------------------------------------------------------
