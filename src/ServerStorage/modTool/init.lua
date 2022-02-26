@@ -153,7 +153,6 @@ function modTool:Setup()
 		self.Trail.Attachment0 = attach0
 		self.Trail.Attachment1 = attach1
 		self.Trail.Parent = self.Hitbox
-		print("TRAIL SETUP")
 	end
 	-----------------------------------------------------------------------------------------
 	-- Create folders with sounds and animations
@@ -176,12 +175,10 @@ function modTool:Setup()
 	swingAnims = findClass(self.Tool:WaitForChild("Animations"), "Swing*", "Animation")
 	swingSfx = findClass(self.Tool:WaitForChild("Sounds"), "Swing*", "Sound")
 	hitSfx = findClass(self.Tool:WaitForChild("Sounds"), "Hit*", "Sound")
-	print("TOOLS PARENT:", self.Tool.Parent)
 	----------------------------------------------------------------
 	-----------------------------------------------------------------------------------------
 	self:Equipped()
 	self:Unequipped()
-	print("SETUP", swingAnims, swingSfx, hitSfx)
 end
 
 -- Checks if player is dead and if tool exists
@@ -286,6 +283,7 @@ function modTool:Equipped()
 			for _, track: AnimationTrack in ipairs(playingTracks) do
 				track:Stop()
 			end
+			table.clear(playingTracks)
 
 			if newHitbox:GetState() and Activated then
 				newHitbox:Destroy()
@@ -306,13 +304,11 @@ function modTool:Unequipped()
 			return
 		end
 
-		print(playingTracks)
 		for _, track: AnimationTrack in ipairs(playingTracks) do
 			track:Stop()
 		end
 		table.clear(playingTracks)
 
-		print(newHitbox:GetState())
 		if newHitbox:GetState() and Activated then
 			pcall(function()
 				newHitbox:Destroy()
@@ -330,7 +326,6 @@ end
 -- Attacks
 cooldown = false
 function modTool:Swing(player: Player, _tool: Tool)
-	print("made it to swing fucntion")
 	local tool = player.Character:FindFirstChildOfClass("Tool")
 	if sanityCheck(tool, player, tool:FindFirstChild(self.Hitbox.Name)) then
 		return
@@ -378,11 +373,9 @@ function modTool:Swing(player: Player, _tool: Tool)
 
 	print("PARENT:", tool.Parent)
 	print("NAME:", tool.Name)
-	print("IN CHARACTER:", player.Character:FindFirstChildOfClass("Tool"))
 	local Hitbox = tool:WaitForChild(self.Hitbox.Name)
 
 	newHitbox = HitboxService:CreateWithPart(Hitbox, Params)
-	warn("CREATED NEW HITBOX")
 
 	newHitbox:Start()
 	newHitbox.Entered:Connect(function(object: BasePart)
@@ -392,7 +385,7 @@ function modTool:Swing(player: Player, _tool: Tool)
 		print("sanity check")
 
 		local chr = object:FindFirstAncestorOfClass("Model")
-		if not Players:GetPlayerFromCharacter(chr) then
+		if not chr:FindFirstChildOfClass("Humanoid") then
 			return
 		end
 		print("character check")
@@ -434,12 +427,12 @@ function modTool:Swing(player: Player, _tool: Tool)
 	end)
 
 	Activated = true
-	warn("STARTED HITBOX")
+	print("STARTED HITBOX")
 	swingTrack.Stopped:Connect(function()
 		if newHitbox:GetState() and Activated then
 			newHitbox:Stop()
 			table.clear(lastHit)
-			warn("STOPPED HITBOX")
+			print("STOPPED HITBOX")
 			Activated = false
 		end
 	end)
