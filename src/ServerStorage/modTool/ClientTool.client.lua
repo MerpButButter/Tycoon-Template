@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ContextActionService = game:GetService("ContextActionService")
 
+local tool: Tool?
 
 type Actions = {
 	NormalAttacks: {
@@ -26,7 +27,7 @@ local function onInput(actionName, inputState, _inputObject)
 	if inputState == Enum.UserInputState.Begin then
 		local remoteEventInput: RemoteEvent = ReplicatedStorage:WaitForChild("ToolRemotes"):WaitForChild("OnInput")
 		print("fired SERVER👍")
-		remoteEventInput:FireServer(actionName)
+		remoteEventInput:FireServer(actionName,tool)
 	end
 	task.wait(cooldown_time)
 	cooldown = false
@@ -35,6 +36,7 @@ end
 --! MAKE SPECIAL ATTACKS WORK WITH SPECIAL ATTACKS IN TABLE
 ContextActionService.LocalToolEquipped:Connect(function(_tool)
 	-- Loop through attacks and bind actions to them
+	tool = _tool
 	for name, value in pairs(ACTIONS.NormalAttacks) do
 		ContextActionService:BindAction(name, onInput, true, table.unpack(value))
 		print(name)
@@ -43,6 +45,7 @@ ContextActionService.LocalToolEquipped:Connect(function(_tool)
 end)
 
 ContextActionService.LocalToolUnequipped:Connect(function(_tool)
+	tool = nil
 	for name, _value in pairs(ACTIONS.NormalAttacks) do
 		ContextActionService:UnbindAction(name)
 		print(name)

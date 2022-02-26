@@ -6,10 +6,11 @@
 local Debris = game:GetService("Debris")
 local ServerStorage = game:GetService("ServerStorage")
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Rand = Random.new()
 
-local raycastHitbox = require(ReplicatedStorage:WaitForChild("RaycastHitboxV4"))
+local TAG_NAME = "Melee"
 local camera = workspace:WaitForChild("Camera")
 local shake = require(ReplicatedStorage.Packages:WaitForChild("shake"))
 local meleeData = require(ServerStorage.Source.meleeData)
@@ -22,12 +23,12 @@ modTool.__index = modTool
 type table = { [any]: any }
 
 -----------------------------------------------------------------------------------------------
-function modTool.New(player: Player, tool: Tool)
+function modTool.New(tool: Tool)
 	local self = setmetatable({}, modTool)
-	self.Player = player
 	self.Tool = tool
+	self.Player = self:GetOwner()
 
-	print('.NEW TOOL FUNCTION')
+	print(".NEW TOOL FUNCTION")
 	local toolData = meleeData[tool.Name]
 
 	if toolData then
@@ -38,12 +39,12 @@ function modTool.New(player: Player, tool: Tool)
 		self.Amplitude = specs.Shake or 0
 		self.Sfx = toolData.Sounds
 		self.Anims = toolData.Animations
-		self.Hitbox = specs.HitBox(player, tool)
+		self.Hitbox = specs.HitBox(self.Player, tool)
 		self.TrailSpecs = specs.Trail
 
 		self.Runnable = true
 	else
-		warn("The melee data table can't find data on:", tool.Name)
+		warn("Can't find data on:", tool.Name)
 		-- So it doesn't runs INIT
 		self.Runnable = false
 	end
@@ -137,12 +138,13 @@ local hitSfx: table
 local onInputRemote: RemoteEvent
 -----------------------------------------------------------------------------------------
 -- Init Function that runs all other sub functions and sets up Trails and Folders with objects
-function modTool:Init()
+function modTool:Setup()
 	if not self.Runnable then
 		return
 	end
 	-----------------------------------------------------------------------------------------
 	-- Prep
+	onInputRemote = ReplicatedStorage:WaitForChild("ToolRemotes"):FindFirstChild("OnInput")
 	--------------------------------
 	-- Trail Setup
 	if not self.Hitbox:FindFirstChildOfClass("Trail") then
@@ -167,34 +169,14 @@ function modTool:Init()
 			createClass(animationFolder, "Animation", animData, tostring(name))
 		end
 	end
-	-----------------------------------------------------------------------------------------
-	-- Setup Folder with Remotes
-	if not ReplicatedStorage:FindFirstChild("Remotes") then
-		local remoteFolder = createFolder("ToolRemotes", ReplicatedStorage)
-		onInputRemote = Instance.new("RemoteEvent")
-		onInputRemote.Name = "OnInput"
-		onInputRemote.Parent = remoteFolder
-		print("CREATED REMOTES")
-	end
-	-----------------------------------------------------------------------------------------
+	----------------------------------------------------------------------------------------------------------------------------------------------------------------
 	-- Parenting the local script
-	local localScriptGUI
-	if not self.Player.PlayerGui:FindFirstChild("LocalScript") then
-		localScriptGUI = Instance.new("ScreenGui")
-		localScriptGUI.ResetOnSpawn = false
-		localScriptGUI.Parent = self.Player.PlayerGui
-	end
-	if not localScriptGUI:FindFirstChild("ClientTool") then
-		local localScript: LocalScript = script.ClientTool:Clone()
-		localScript.Parent = localScriptGUI
-		localScript.Disabled = false
-	end
 	-----------------------------------------------------------------------------------------
 	-- Getting Animation and Sound Setup ----------------------------------------------------
 	swingAnims = findClass(self.Tool:WaitForChild("Animations"), "Swing*", "Animation")
 	swingSfx = findClass(self.Tool:WaitForChild("Sounds"), "Swing*", "Sound")
 	hitSfx = findClass(self.Tool:WaitForChild("Sounds"), "Hit*", "Sound")
-	print("TOOLS PARENT:",self.Tool.Parent)
+	print("TOOLS PARENT:", self.Tool.Parent)
 	----------------------------------------------------------------
 	-----------------------------------------------------------------------------------------
 	self:Equipped()
@@ -205,7 +187,7 @@ end
 -- Checks if player is dead and if tool exists
 local function sanityCheck(tool: Tool, plr: Player, hitbox: BasePart)
 	local character = plr.Character
-	return not (plr or plr.Character or character.PrimaryPart or tool or hitbox)
+	return not (plr or plr.Character or plr.Character.Humanoid.Health <= 0 or character.PrimaryPart or tool or hitbox)
 end
 
 local function bodyForce(humanoid: Humanoid, amount: number, parent: Instance?)
@@ -259,9 +241,10 @@ function modTool:Equipped()
 		----------------------------------------------------------------
 		-- Attack Initialization
 		----------------------------------------------------------------
-		onInputRemote.OnServerEvent:Connect(function(_player, _name)
-			self:Swing(self.Player,self.Tool)
-			print(self.Tool.Parent)
+		onInputRemote.OnServerEvent:Connect(function(_player, _atkname, tool: Tool)
+			if CollectionService:HasTag(tool, TAG_NAME) and tool == self.Tool then
+				self:Swing(self.Player, self.Tool)
+			end
 		end)
 
 		----------------------------------------------------------------
@@ -323,13 +306,18 @@ function modTool:Unequipped()
 			return
 		end
 
+		print(playingTracks)
 		for _, track: AnimationTrack in ipairs(playingTracks) do
 			track:Stop()
 		end
+		table.clear(playingTracks)
 
+		print(newHitbox:GetState())
 		if newHitbox:GetState() and Activated then
-			newHitbox:Destroy()
-			Activated = false
+			pcall(function()
+				newHitbox:Destroy()
+				Activated = false
+			end)
 		end
 
 		handleRemovedConnect:Disconnect()
@@ -340,9 +328,8 @@ end
 
 -------------------------------------------------------------------------------------------------
 -- Attacks
---! add hitbox service
 cooldown = false
-function modTool:Swing(player: Player,_tool:Tool)
+function modTool:Swing(player: Player, _tool: Tool)
 	print("made it to swing fucntion")
 	local tool = player.Character:FindFirstChildOfClass("Tool")
 	if sanityCheck(tool, player, tool:FindFirstChild(self.Hitbox.Name)) then
@@ -378,15 +365,25 @@ function modTool:Swing(player: Player,_tool:Tool)
 		:WaitForChild("Humanoid")
 		:WaitForChild("Animator")
 		:LoadAnimation(swingAnims[Rand:NextInteger(1, #swingAnims)])
-	swingTrack:Play(0.05)
 
-			print("PARENT:",tool.Parent)
-			print("NAME:",tool.Name)
-			print("IN CHARACTER:",player.Character:FindFirstChildOfClass("Tool"))
+	swingTrack:Play(0.05)
+	table.insert(playingTracks, swingTrack)
+
+	-- Trail
+	task.spawn(function()
+		self.Trail.Enabled = true
+		task.wait(swingTrack.Length)
+		self.Trail.Enabled = false
+	end)
+
+	print("PARENT:", tool.Parent)
+	print("NAME:", tool.Name)
+	print("IN CHARACTER:", player.Character:FindFirstChildOfClass("Tool"))
 	local Hitbox = tool:WaitForChild(self.Hitbox.Name)
 
 	newHitbox = HitboxService:CreateWithPart(Hitbox, Params)
 	warn("CREATED NEW HITBOX")
+
 	newHitbox:Start()
 	newHitbox.Entered:Connect(function(object: BasePart)
 		if sanityCheck(self.Tool, self.Player, self.Hitbox) then
@@ -447,5 +444,19 @@ function modTool:Swing(player: Player,_tool:Tool)
 		end
 	end)
 end
+
+function modTool:GetOwner()
+	if self.Tool:FindFirstAncestorOfClass("Player") then
+		return self.Tool:FindFirstAncestorOfClass("Player")
+	end
+	local model = self.Tool:FindFirstAncestorOfClass("Model")
+	print(self.Tool.Parent)
+	if model then
+		local player = Players:GetPlayerFromCharacter(model)
+		if player then
+			return player
+		end
+	end
+end
 -------------------------------------------------------------------------------------------------
-return modTool
+return modTool.New
